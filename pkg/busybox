@@ -32,6 +32,7 @@ dopatch "$K"/busybox-1.28-break-build-system.patch
 dopatch "$K"/busybox-blowfish.patch
 dopatch "$K"/busybox-libbb-make-unicode-printable.patch
 dopatch "$K"/busybox-ping.patch
+dopatch "$K"/busybox-tcc.patch
 
 #__inline seems to get activated when -std=gnu99 is used, causing havoc
 sed -i 's,__inline,,' ./scripts/kconfig/zconf.hash.c_shipped
@@ -48,7 +49,10 @@ if [ "$DEBUGBUILD" = "1" ] ; then
 	    -i config.stage1
 fi
 
-make KCONFIG_ALLCONFIG=config.stage1 allnoconfig
+make V=1 LDFLAGS=-static HOSTLDFLAGS=-static \
+CFLAGS_busybox="$debugcflags -Wl,-z,muldefs -Werror-implicit-function-declaration" \
+HOSTCC="$HOSTCC -static" CC="$CC -static" HOSTCFLAGS=-D_GNU_SOURCE  -j$MAKE_THREADS \
+KCONFIG_ALLCONFIG=config.stage1 allnoconfig
 
 # alternative:
 # make KBUILD_VERBOSE=1 CC="$CC" HOSTCC="$HOSTCC" \

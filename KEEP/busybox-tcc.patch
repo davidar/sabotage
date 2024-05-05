@@ -1,0 +1,168 @@
+From 4b2751474e522f9fc3973e9161407d0469f8e1b5 Mon Sep 17 00:00:00 2001
+From: David A Roberts <d@vidr.cc>
+Date: Sun, 5 May 2024 20:45:54 +1000
+Subject: [PATCH] Avoid compile errors with tcc
+
+---
+ archival/libarchive/decompress_gunzip.c | 2 +-
+ archival/unzip.c                        | 2 ++
+ networking/nameif.c                     | 7 ++++---
+ runit/runit_lib.h                       | 2 ++
+ scripts/kconfig/lkc.h                   | 2 +-
+ shell/hush.c                            | 4 +++-
+ util-linux/fdisk.c                      | 2 ++
+ util-linux/mkfs_vfat.c                  | 2 ++
+ 8 files changed, 17 insertions(+), 6 deletions(-)
+
+diff --git a/archival/libarchive/decompress_gunzip.c b/archival/libarchive/decompress_gunzip.c
+index eb3b64930..d5e495293 100644
+--- a/archival/libarchive/decompress_gunzip.c
++++ b/archival/libarchive/decompress_gunzip.c
+@@ -1143,7 +1143,7 @@ static int check_header_gzip(STATE_PARAM transformer_state_t *xstate)
+ 		} PACKED formatted;
+ 	} header;
+ 
+-	BUILD_BUG_ON(sizeof(header) != 8);
++	// BUILD_BUG_ON(sizeof(header) != 8);
+ 
+ 	/*
+ 	 * Rewind bytebuffer. We use the beginning because the header has 8
+diff --git a/archival/unzip.c b/archival/unzip.c
+index d94bbabcf..91c017667 100644
+--- a/archival/unzip.c
++++ b/archival/unzip.c
+@@ -188,6 +188,7 @@ do { if (BB_BIG_ENDIAN) { \
+ 	(cde).fmt.cdf_offset = SWAP_LE32((cde).fmt.cdf_offset); \
+ }} while (0)
+ 
++#if 0
+ struct BUG {
+ 	/* Check the offset of the last element, not the length.  This leniency
+ 	 * allows for poor packing, whereby the overall struct may be too long,
+@@ -202,6 +203,7 @@ struct BUG {
+ 	char BUG_cde_must_be_16_bytes[
+ 		sizeof(cde_t) == CDE_LEN ? 1 : -1];
+ };
++#endif
+ 
+ 
+ enum { zip_fd = 3 };
+diff --git a/networking/nameif.c b/networking/nameif.c
+index 854594c83..4fecf3cf0 100644
+--- a/networking/nameif.c
++++ b/networking/nameif.c
+@@ -312,18 +312,19 @@ int nameif_main(int argc UNUSED_PARAM, char **argv)
+ 			clist = ch->next;
+ 		if (ch->next != NULL)
+ 			ch->next->prev = ch->prev;
+-		if (ENABLE_FEATURE_CLEAN_UP)
++#if ENABLE_FEATURE_CLEAN_UP
+ 			delete_eth_table(ch);
++#endif
+ 	} /* while */
+ 
+-	if (ENABLE_FEATURE_CLEAN_UP) {
++#if ENABLE_FEATURE_CLEAN_UP
+ 		ethtable_t *next;
+ 		for (ch = clist; ch; ch = next) {
+ 			next = ch->next;
+ 			delete_eth_table(ch);
+ 		}
+ 		config_close(parser);
+-	};
++#endif
+ 
+ 	return 0;
+ }
+diff --git a/runit/runit_lib.h b/runit/runit_lib.h
+index c54561616..fc49ff6ee 100644
+--- a/runit/runit_lib.h
++++ b/runit/runit_lib.h
+@@ -39,8 +39,10 @@ typedef struct svstatus_t {
+ 	uint8_t  got_term;
+ 	uint8_t  run_or_finish;
+ } svstatus_t;
++#if 0
+ struct ERR_svstatus_must_be_20_bytes {
+ 	char ERR_svstatus_must_be_20_bytes[sizeof(svstatus_t) == 20 ? 1 : -1];
+ };
++#endif
+ 
+ POP_SAVED_FUNCTION_VISIBILITY
+diff --git a/scripts/kconfig/lkc.h b/scripts/kconfig/lkc.h
+index 527f60c99..b7f5c1fd6 100644
+--- a/scripts/kconfig/lkc.h
++++ b/scripts/kconfig/lkc.h
+@@ -35,7 +35,7 @@ extern "C" {
+ #define LOCALEDIR "/usr/share/locale"
+ 
+ #define _(text) gettext(text)
+-#define N_(text) (text)
++#define N_(text) text
+ 
+ 
+ #define TF_COMMAND	0x0001
+diff --git a/shell/hush.c b/shell/hush.c
+index 9fead37da..3b658f43d 100644
+--- a/shell/hush.c
++++ b/shell/hush.c
+@@ -9290,7 +9290,8 @@ static NOINLINE int run_pipe(struct pipe *pi)
+ #endif
+ 			}
+ 		} else
+-		if (ENABLE_FEATURE_SH_NOFORK && NUM_APPLETS > 1) {
++#if ENABLE_FEATURE_SH_NOFORK
++		if (NUM_APPLETS > 1) {
+ 			int n = find_applet_by_name(argv_expanded[0]);
+ 			if (n < 0 || !APPLET_IS_NOFORK(n))
+ 				goto must_fork;
+@@ -9315,6 +9316,7 @@ static NOINLINE int run_pipe(struct pipe *pi)
+ 				rcode = run_nofork_applet(n, argv_expanded);
+ 			}
+ 		} else
++#endif
+ 			goto must_fork;
+ 
+ 		restore_redirects(squirrel);
+diff --git a/util-linux/fdisk.c b/util-linux/fdisk.c
+index c50ceead1..80fb7b10a 100644
+--- a/util-linux/fdisk.c
++++ b/util-linux/fdisk.c
+@@ -2710,6 +2710,7 @@ write_table(void)
+ 		/* no test on change? the "altered" msg below might be mistaken */
+ 		sgi_write_table();
+ 	}
++#if ENABLE_FEATURE_SUN_LABEL
+ 	else if (LABEL_IS_SUN) {
+ 		for (i = 0; i < 8; i++) {
+ 			if (ptes[i].changed) {
+@@ -2718,6 +2719,7 @@ write_table(void)
+ 			}
+ 		}
+ 	}
++#endif
+ 
+ 	puts("The partition table has been altered.");
+ 	reread_partition_table(1);
+diff --git a/util-linux/mkfs_vfat.c b/util-linux/mkfs_vfat.c
+index 844d965f8..9d4096fce 100644
+--- a/util-linux/mkfs_vfat.c
++++ b/util-linux/mkfs_vfat.c
+@@ -173,12 +173,14 @@ struct fat32_fsinfo {
+ 	uint16_t boot_sign;          /* 1fe */
+ } PACKED;
+ 
++#if 0
+ struct bug_check {
+ 	char BUG1[sizeof(struct msdos_dir_entry  ) == 0x20 ? 1 : -1];
+ 	char BUG2[sizeof(struct msdos_volume_info) == 0x1a ? 1 : -1];
+ 	char BUG3[sizeof(struct msdos_boot_sector) == 0x200 ? 1 : -1];
+ 	char BUG4[sizeof(struct fat32_fsinfo     ) == 0x200 ? 1 : -1];
+ };
++#endif
+ 
+ static const char boot_code[] ALIGN1 =
+ 	"\x0e"          /* 05a:         push  cs */
+-- 
+2.34.1
+

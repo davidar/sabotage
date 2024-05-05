@@ -31,11 +31,11 @@ cflags_size="-Os -g0 -fdata-sections -ffunction-sections"
 cflags_speed="-O3 -fstrength-reduce -fthread-jumps -fcse-follow-jumps -fcse-skip-blocks -frerun-cse-after-loop -fexpensive-optimizations -fforce-addr -fomit-frame-pointer"
 
 ldflags_base="-Wl,-z,relro,-z,now -Wl,-z,text"
-ldflags_size="-Wl,--gc-sections"
+ldflags_size=""
 
 if [ "$STAGE" = 0 ] ; then
-cflags_base="$cflags_base -Wa,--compress-debug-sections=none"
-ldflags_base="$ldflags_base -Wl,--compress-debug-sections=none"
+cflags_base="$cflags_base"
+ldflags_base="$ldflags_base"
 fi
 
 if [ "$OPT_KEEP_DEBUG" = 1 ] ; then
